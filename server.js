@@ -21,6 +21,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(PUBLIC_DIR));
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
 const readDb = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
 const writeDb = (db) => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 
