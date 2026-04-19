@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <title>Argos RJ</title>
+</head>
+<body>
+<div class="page">
+<header class="site-header container">
+  <div class="header-box">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Argos RJ">
+      <div><strong>Argos RJ</strong><span>Servidor, loja e dashboard player</span></div>
+    </a>
+    <nav class="nav" id="siteNav">
+      <a href="index.html">Início</a>
+      <a href="loja.html">Loja</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="suporte.html">Suporte</a>
+      <a href="faq.html">FAQ</a>
+      <a href="regras.html">Regras</a>
+    </nav>
+    <div class="header-actions" id="authArea">
+      <button class="btn-soft mobile-toggle" id="mobileToggle">Menu</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+
+<section class="hero hero-server">
+  <div class="hero-copy reveal">
+    <span class="kicker">Argos RJ • servidor RPG no Rio</span>
+    <h1>Entre na comunidade, acompanhe sua conta e use a loja do <span>jeito certo</span></h1>
+    <p class="lead">O site do Argos RJ foi pensado para o player que quer acompanhar tudo em um só lugar: entrar pelo Discord, confirmar a conta do jogo, acessar a loja com segurança e gerenciar caixas, skins e histórico dentro do dashboard.</p>
+    <div class="hero-actions">
+      <a class="btn" href="https://discord.gg/mtzEFsTJYw" target="_blank" rel="noopener">Entrar no Discord</a>
+      <a class="btn-soft" href="login.html">Acessar conta</a>
+    </div>
+    <div class="hero-stats hero-status-grid">
+      <div class="stat-card status-highlight">
+        <div class="status-top"><span class="status-dot online"></span><small>Status do servidor</small></div>
+        <strong id="serverStatusText">Status indisponível</strong>
+        <span><span id="serverStatusSub">Configure a API de status para mostrar online, manutenção ou reinício.</span></span>
+      </div>
+      <div class="stat-card status-highlight">
+        <div class="status-top"><span class="status-dot discord"></span><small>Comunidade</small></div>
+        <strong id="discordInviteText">Discord oficial</strong>
+        <span><span id="discordInviteSub">Entre na comunidade, abra ticket e acompanhe anúncios.</span></span>
+      </div>
+      <div class="stat-card status-highlight">
+        <div class="status-top"><span class="status-dot secure"></span><small>Conta protegida</small></div>
+        <strong id="accountFlowText">Conta protegida</strong>
+        <span><span id="accountFlowSub">Compras liberadas apenas para contas autenticadas e com ID confirmado.</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-media reveal hero-media-stack">
+    <img src="assets/banner-main.png" alt="Banner Argos RJ">
+    <div class="overlay-card server-overlay">
+      <small class="muted">Experiência do servidor</small>
+      <strong>Comunidade, loja e painel do jogador</strong>
+      <span>Uma apresentação mais profissional do Argos RJ, com foco em confiança, acesso rápido e organização da conta.</span>
+    </div>
+    <div class="surface server-quick-strip">
+      <div>
+        <small>Discord oficial</small>
+        <strong>Suporte e anúncios</strong>
+      </div>
+      <div>
+        <small>Dashboard player</small>
+        <strong>Inventário, caixas e vínculo</strong>
+      </div>
+      <div>
+        <small>Loja protegida</small>
+        <strong>Checkout com validação</strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head reveal">
+    <div>
+      <span class="chip">Por que usar o site</span>
+      <h2>Estrutura focada no dia a dia do player</h2>
+      <p>Em vez de uma home genérica, a página inicial agora apresenta o ecossistema do servidor como um produto real para quem chega pela primeira vez.</p>
+    </div>
+  </div>
+  <div class="grid-4 feature-grid-tight">
+    <article class="mini-card reveal"><span class="chip">Conta</span><h3>Login por Discord</h3><p>Entrada central para liberar área do jogador, compras e identificação da conta no site.</p></article>
+    <article class="mini-card reveal"><span class="chip">Servidor</span><h3>Vínculo com o ID do jogo</h3><p>Fluxo preparado para confirmação dentro do MTA antes de liberar compras finais.</p></article>
+    <article class="mini-card reveal"><span class="chip">Loja</span><h3>Caixas, skins e produtos</h3><p>Itens organizados com descrição ampliada e compra travada para contas não confirmadas.</p></article>
+    <article class="mini-card reveal"><span class="chip">Suporte</span><h3>FAQ, regras e ticket</h3><p>Tudo separado para o player encontrar respostas, abrir suporte e entrar no Discord oficial.</p></article>
+  </div>
+</section>
+
+<section class="section">
+  <div class="home-split">
+    <div class="panel reveal">
+      <div class="section-head compact-head">
+        <div>
+          <span class="chip">Acesso rápido</span>
+          <h2>Entre no fluxo do Argos RJ</h2>
+        </div>
+      </div>
+      <div class="quick-list">
+        <div class="quick-item"><div><strong>1. Entre com Discord</strong><div class="muted">Identifique sua conta e libere a área privada.</div></div></div>
+        <div class="quick-item"><div><strong>2. Vincule seu ID</strong><div class="muted">Prepare a confirmação que será exibida no jogo.</div></div></div>
+        <div class="quick-item"><div><strong>3. Compre com segurança</strong><div class="muted">A loja só conclui o pedido após validação da conta.</div></div></div>
+        <div class="quick-item"><div><strong>4. Abra caixas no dashboard</strong><div class="muted">Tudo fica centralizado no inventário, sem redirecionamento.</div></div></div>
+      </div>
+    </div>
+
+    <div class="panel reveal presentation-panel">
+      <div class="section-head compact-head">
+        <div>
+          <span class="chip">Visão pública</span>
+          <h2>O que o visitante encontra</h2>
+        </div>
+      </div>
+      <div class="presentation-grid">
+        <div class="presentation-item"><small>Página inicial</small><strong>Servidor apresentado de forma profissional</strong></div>
+        <div class="presentation-item"><small>Loja</small><strong>Catálogo discreto com modal de detalhes</strong></div>
+        <div class="presentation-item"><small>Dashboard</small><strong>Áreas internas para resumo, vínculo, inventário e atividade</strong></div>
+        <div class="presentation-item"><small>Suporte</small><strong>Discord oficial, ticket e páginas auxiliares</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head reveal">
+    <div>
+      <span class="chip">Informações úteis</span>
+      <h2>Páginas de apoio do servidor</h2>
+      <p>Além da loja e do painel, o site também organiza páginas para dúvidas comuns, regras gerais e abertura de suporte.</p>
+    </div>
+  </div>
+  <div class="stats-grid reveal home-link-cards">
+    <a class="stat-card link-card" href="faq.html"><strong>FAQ</strong><span>Dúvidas rápidas sobre login, compra, caixa e inventário.</span></a>
+    <a class="stat-card link-card" href="regras.html"><strong>Regras</strong><span>Condutas, segurança de conta e diretrizes da comunidade.</span></a>
+    <a class="stat-card link-card" href="suporte.html"><strong>Suporte</strong><span>Atalhos para ticket, equipe e canal oficial do servidor.</span></a>
+    <a class="stat-card link-card" href="dashboard.html"><strong>Dashboard</strong><span>Painel privado para gerenciar sua experiência no Argos RJ.</span></a>
+  </div>
+</section>
+
+</main>
+<footer class="footer container">
+  <div><strong>Argos RJ</strong><span>Servidor, loja e dashboard do player com visual mais discreto, moderno e organizado.</span></div>
+  <div>© <span id="year"></span> Argos RJ</div>
+</footer>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

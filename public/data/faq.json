@@ -1,0 +1,18 @@
+[
+  {
+    "q": "A loja precisa de login?",
+    "a": "Sim. A loja e o checkout só são liberados quando a conta web está conectada."
+  },
+  {
+    "q": "Como funciona o ID do jogo?",
+    "a": "Você informa o ID no dashboard. Quando o status estiver confirmado, o checkout é liberado."
+  },
+  {
+    "q": "As caixas abrem onde?",
+    "a": "No dashboard, dentro do inventário. A caixa comprada vai para a seção de caixas e abre em modal, sem redirecionar."
+  },
+  {
+    "q": "Tem cupom?",
+    "a": "Sim. O cupom ARGOS50 aplica 50% de desconto no valor dos itens elegíveis do carrinho."
+  }
+]

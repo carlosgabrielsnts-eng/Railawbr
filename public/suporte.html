@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+<header class="site-header container">
+  <div class="header-box">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Argos RJ">
+      <div><strong>Argos RJ</strong><span>Loja e dashboard player</span></div>
+    </a>
+    <nav class="nav" id="siteNav">
+      <a href="index.html">Início</a>
+      <a href="loja.html">Loja</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="suporte.html">Suporte</a>
+      <a href="faq.html">FAQ</a>
+      <a href="regras.html">Regras</a>
+    </nav>
+    <div class="header-actions" id="authArea">
+      <button class="btn-soft mobile-toggle" id="mobileToggle">Menu</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+
+<section class="page-hero reveal">
+  <div class="page-title">
+    <div>
+      <span class="chip">Suporte</span>
+      <h1>Abra ticket, entre no Discord e resolva pendências</h1>
+      <p>Ao clicar em suporte, o jogador encontra uma página própria para atendimento. Aqui você pode centralizar ticket, comunidade e informações sobre compras, skins e entregas.</p>
+    </div>
+  </div>
+</section>
+<section class="section support-grid">
+  <div class="support-card reveal">
+    <span class="chip">Canais principais</span>
+    <h2 style="margin:12px 0 8px">Acesso rápido</h2>
+    <div class="ticket-actions">
+      <a class="ticket-link" href="https://discord.gg/mtzEFsTJYw" target="_blank" rel="noopener noreferrer"><div><strong>Entrar no Discord do servidor</strong><div class="muted">Comunidade, avisos e abertura de suporte</div></div><span>↗</span></a>
+      <a class="ticket-link" href="https://discord.gg/mtzEFsTJYw" target="_blank" rel="noopener noreferrer"><div><strong>Abrir ticket</strong><div class="muted">Direcionamento para a central de atendimento</div></div><span>↗</span></a>
+      <a class="ticket-link" href="faq.html"><div><strong>Consultar FAQ</strong><div class="muted">Dúvidas comuns sobre login, loja e inventário</div></div><span>→</span></a>
+      <a class="ticket-link" href="regras.html"><div><strong>Ler regras</strong><div class="muted">Boas práticas, conduta e orientações do sistema</div></div><span>→</span></a>
+    </div>
+  </div>
+  <aside class="support-card reveal">
+    <span class="chip">Informações extras</span>
+    <h2 style="margin:12px 0 8px">Quando procurar suporte</h2>
+    <div class="quick-list">
+      <div class="quick-item"><div><strong>Problema com compra</strong><div class="muted">Carrinho, confirmação ou crédito de caixa.</div></div></div>
+      <div class="quick-item"><div><strong>Falha em skin</strong><div class="muted">Dúvidas sobre raridade, visual ou inventário.</div></div></div>
+      <div class="quick-item"><div><strong>Acesso à conta</strong><div class="muted">Login, senha ou divergência de perfil.</div></div></div>
+    </div>
+    <div class="notice" style="margin-top:16px">No modelo atual, o botão de ticket redireciona para o Discord do servidor: https://discord.gg/mtzEFsTJYw</div>
+  </aside>
+</section>
+
+</main>
+<footer class="footer container">
+  <div><strong>Argos RJ</strong><span>Modelo completo em HTML, CSS e JS com loja e dashboard unificado para caixas e inventário.</span></div>
+  <div>© <span id="year"></span> Argos RJ</div>
+</footer>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

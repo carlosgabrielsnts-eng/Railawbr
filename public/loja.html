@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <title>Loja • Argos RJ</title>
+</head>
+<body data-private="true">
+<div class="page">
+<header class="site-header container">
+  <div class="header-box">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Argos RJ">
+      <div><strong>Argos RJ</strong><span>Loja e dashboard player</span></div>
+    </a>
+    <nav class="nav" id="siteNav">
+      <a href="index.html">Início</a>
+      <a href="loja.html">Loja</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="suporte.html">Suporte</a>
+      <a href="faq.html">FAQ</a>
+      <a href="regras.html">Regras</a>
+    </nav>
+    <div class="header-actions" id="authArea">
+      <button class="btn-soft mobile-toggle" id="mobileToggle">Menu</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+
+<section class="page-hero reveal">
+  <div class="page-title">
+    <div>
+      <span class="chip">Loja do servidor</span>
+      <h1>Caixas, coins e extras com checkout travado sem ID confirmado</h1>
+      <p>A loja só funciona para contas com login Discord ativo. Para finalizar qualquer compra, o jogador também precisa ter o ID do jogo confirmado dentro do dashboard.</p>
+    </div>
+    <div class="surface" data-login-required>
+      <strong>Conta atual</strong>
+      <div class="muted">Player: <span class="js-user">Visitante</span></div>
+      <div class="muted">Saldo: <span class="js-balance">R$ 0,00</span></div>
+      <div class="status-stack" style="margin-top:12px">
+        <div class="status-pill" id="shopDiscordStatus">Discord desconectado</div>
+        <div class="status-pill" id="shopLinkStatus">ID não confirmado</div>
+      </div>
+    </div>
+  </div>
+  <div class="search-row">
+    <input class="input" id="shopSearch" placeholder="Buscar caixas, coins, boosts ou extras">
+    <select id="shopType">
+      <option value="all">Todos os tipos</option>
+      <option value="caixa">Caixas</option>
+      <option value="coins">Coins</option>
+      <option value="extra">Extras</option>
+      <option value="boost">Boosts</option>
+    </select>
+  </div>
+</section>
+
+<section class="section shop-layout">
+  <div>
+    <div class="shop-grid" id="shopGrid"></div>
+  </div>
+  <aside class="panel side-panel">
+    <span class="chip">Carrinho</span>
+    <h2 style="margin:12px 0 8px">Resumo da compra</h2>
+    <p class="muted">Caixas compradas aqui não abrem na hora. Elas vão direto para o inventário de caixas no dashboard. Coins entram no saldo da conta.</p>
+
+    <div class="checkout-status-box">
+      <div class="quick-item"><div><strong>Login da conta</strong><div class="muted" id="cartLoginState">Conecte o Discord para continuar</div></div></div>
+      <div class="quick-item"><div><strong>Vínculo do ID</strong><div class="muted" id="cartLinkState">Confirme seu ID no dashboard antes do checkout</div></div></div>
+    </div>
+
+    <div class="cart-list" id="cartList"></div>
+    <div class="total-row"><strong>Total</strong><strong id="cartTotal">R$ 0,00</strong></div>
+    <div class="helper"><span>Itens</span><strong id="cartCount">0</strong></div>
+    <div class="actions" style="margin-top:16px">
+      <button class="btn-soft" id="clearCart">Limpar</button>
+      <button class="btn" id="checkoutBtn">Finalizar compra</button>
+    </div>
+    <div class="notice" style="margin-top:16px" id="checkoutNotice">Para concluir: login Discord + ID do jogo confirmado.</div>
+  </aside>
+</section>
+
+</main>
+<footer class="footer container">
+  <div><strong>Argos RJ</strong><span>Modelo completo em HTML, CSS e JS com loja protegida por login e confirmação do ID do jogo.</span></div>
+  <div>© <span id="year"></span> Argos RJ</div>
+</footer>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

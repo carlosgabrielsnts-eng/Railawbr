@@ -1,0 +1,50 @@
+[
+  {
+    "id": "ak-dragao",
+    "name": "AK Dragão",
+    "weapon": "AK-47",
+    "rarity": "mythic",
+    "image": "assets/ak-dragao-mythica.png",
+    "description": "Skin mythica com corpo dracônico roxo, chifres metálicos e presença agressiva."
+  },
+  {
+    "id": "m4-carbon",
+    "name": "M4 Carbon Veil",
+    "weapon": "M4",
+    "rarity": "rare",
+    "image": "assets/banner-profile.png",
+    "description": "Visual escuro com acabamento limpo e linhas frias."
+  },
+  {
+    "id": "deagle-royal",
+    "name": "Deagle Royal Trace",
+    "weapon": "Desert Eagle",
+    "rarity": "epic",
+    "image": "assets/banner-main.png",
+    "description": "Traços roxos refinados com brilho mais nobre."
+  },
+  {
+    "id": "awp-crown",
+    "name": "AWP Crownline",
+    "weapon": "AWP",
+    "rarity": "legendary",
+    "image": "assets/VipUltimate.png",
+    "description": "Combinação dourada de presença forte e acabamento premium."
+  },
+  {
+    "id": "smg-neon",
+    "name": "SMG Neon Pulse",
+    "weapon": "SMG",
+    "rarity": "rare",
+    "image": "assets/VipArgos.png",
+    "description": "Detalhes neon discretos para trocas rápidas."
+  },
+  {
+    "id": "sniper-void",
+    "name": "Sniper Void Seraph",
+    "weapon": "Sniper",
+    "rarity": "mythic",
+    "image": "assets/VipDivino.png",
+    "description": "Acabamento mythica com contraste profundo e presença pesada."
+  }
+]

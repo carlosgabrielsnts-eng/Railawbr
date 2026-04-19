@@ -1,0 +1,25 @@
+{
+  "siteName": "Argos RJ",
+  "tagline": "Servidor RPG no Rio com loja, dashboard do player e inventário de skins.",
+  "discordInvite": "https://discord.gg/mtzEFsTJYw",
+  "status": {
+    "label": "Online",
+    "players": "127/512",
+    "ping": "34ms"
+  },
+  "shop": {
+    "couponCode": "ARGOS50",
+    "couponDiscount": 0.5,
+    "currency": "BRL"
+  },
+  "brand": {
+    "accent": "#f97316",
+    "accentSoft": "rgba(249,115,22,.16)"
+  },
+  "links": {
+    "supportTicket": "https://discord.gg/mtzEFsTJYw"
+  },
+  "notes": {
+    "staticMode": "Esta versão é 100% HTML/CSS/JS + JSON. Login OAuth e pagamentos reais precisam de backend seguro."
+  }
+}

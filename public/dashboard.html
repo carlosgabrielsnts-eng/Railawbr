@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <title>Dashboard • Argos RJ</title>
+</head>
+<body data-private="true">
+<div class="page">
+<header class="site-header container">
+  <div class="header-box">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Argos RJ">
+      <div><strong>Argos RJ</strong><span>Loja e dashboard player</span></div>
+    </a>
+    <nav class="nav" id="siteNav">
+      <a href="index.html">Início</a>
+      <a href="loja.html">Loja</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="suporte.html">Suporte</a>
+      <a href="faq.html">FAQ</a>
+      <a href="regras.html">Regras</a>
+    </nav>
+    <div class="header-actions" id="authArea">
+      <button class="btn-soft mobile-toggle" id="mobileToggle">Menu</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+
+<section class="page-hero dashboard-hero reveal" id="dashboardHome">
+  <div class="page-title">
+    <div>
+      <span class="chip">Dashboard do player</span>
+      <h1>Área privada da sua conta no Argos RJ</h1>
+      <p>Um painel mais limpo, com navegação interna por seções para não deixar tudo na mesma tela ao mesmo tempo. Aqui o jogador acompanha a conta, vincula o ID do jogo, gerencia caixas e consulta o histórico.</p>
+    </div>
+    <div class="surface profile-surface dashboard-profile-card">
+      <div class="profile-line">
+        <div class="profile-avatar js-avatar">AR</div>
+        <div>
+          <strong class="js-user">Visitante</strong>
+          <div class="muted js-discord-user">Discord não conectado</div>
+        </div>
+      </div>
+      <div class="status-stack">
+        <div class="status-pill" id="discordStatusBadge">Discord desconectado</div>
+        <div class="status-pill" id="linkStatusBadgeHero">ID não vinculado</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-shell">
+  <aside class="dashboard-sidebar reveal">
+    <div class="sidebar-head">
+      <span class="chip">Navegação</span>
+      <h2>Seu painel</h2>
+      <p>Use o menu lateral para alternar as áreas sem poluir a página.</p>
+    </div>
+    <nav class="dashboard-tabs side-tabs">
+      <a class="dash-tab active" href="#resumo">Resumo</a>
+      <a class="dash-tab" href="#vinculo">Vincular ID</a>
+      <a class="dash-tab" href="#inventario">Inventário</a>
+      <a class="dash-tab" href="#atividade">Atividade</a>
+    </nav>
+    <div class="sidebar-note surface">
+      <small>Compra liberada</small>
+      <strong id="summaryLinkState">Pendente</strong>
+      <span class="muted">O checkout só é liberado quando o ID estiver confirmado.</span>
+    </div>
+  </aside>
+
+  <div class="dashboard-content">
+    <section class="dash-panel is-active" id="resumo" data-panel>
+      <div class="section-head reveal compact-head">
+        <div>
+          <span class="chip">Resumo</span>
+          <h2>Visão geral da conta</h2>
+          <p>Os dados principais ficam concentrados aqui para o jogador bater o olho e entender o status atual.</p>
+        </div>
+      </div>
+      <div class="stats-grid reveal">
+        <div class="stat-card"><strong class="js-balance">R$ 0,00</strong><span>Saldo visual disponível</span></div>
+        <div class="stat-card"><strong class="js-boxes">0</strong><span>Caixas no inventário</span></div>
+        <div class="stat-card"><strong class="js-skins">0</strong><span>Skins em conta</span></div>
+        <div class="stat-card"><strong id="summaryLinkStateCard">Pendente</strong><span>Status de vínculo do ID</span></div>
+      </div>
+      <div class="dashboard-summary-grid reveal">
+        <div class="panel summary-panel-block">
+          <span class="chip">Conta conectada</span>
+          <h3>Seu acesso passa por Discord e confirmação de ID</h3>
+          <p class="muted">Esse fluxo ajuda a organizar melhor quem pode entrar na loja, receber produtos e gerenciar o inventário com segurança.</p>
+        </div>
+        <div class="panel summary-panel-block">
+          <span class="chip">Fluxo de compra</span>
+          <h3>Comprar, guardar caixa e abrir no inventário</h3>
+          <p class="muted">A caixa comprada vai para o inventário e a abertura acontece em modal, sem sair do dashboard.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="dash-panel" id="vinculo" data-panel>
+      <div class="section-head reveal compact-head">
+        <div>
+          <span class="chip">Vincular conta do jogo</span>
+          <h2>Preparar integração do ID do MTA</h2>
+          <p>Essa área já deixa o fluxo pronto para integração futura: o usuário informa o ID do jogo, recebe um código de verificação e depois confirma no jogo.</p>
+        </div>
+      </div>
+      <div class="link-grid">
+        <div class="panel reveal">
+          <span class="chip">Etapa 1</span>
+          <h2 style="margin:12px 0 8px">Informar ID do jogo</h2>
+          <p class="muted">Digite o ID usado no servidor. Quando o backend existir, essa ação vai enviar uma solicitação real para o jogo.</p>
+          <form class="form-grid" id="linkGameForm" style="margin-top:18px">
+            <input class="input" id="gameIdInput" placeholder="Digite o ID do jogo">
+            <button class="btn" type="submit">Preparar vinculação</button>
+          </form>
+          <div class="helper" style="margin-top:16px">
+            <span>Status atual</span>
+            <strong id="linkStatusText">ID não vinculado</strong>
+          </div>
+          <div class="actions" style="margin-top:16px">
+            <button class="btn-soft" id="simulateConfirmBtn" type="button">Consultar status do vínculo</button>
+            <button class="btn-soft" id="resetLinkBtn" type="button">Resetar vínculo</button>
+          </div>
+          <div class="tiny-note" style="margin-top:16px">O painel consulta o status do vínculo salvo no backend. Quando a integração do jogo confirmar o código, o checkout é liberado.</div>
+        </div>
+
+        <aside class="panel reveal">
+          <span class="chip">Etapa 2</span>
+          <h2 style="margin:12px 0 8px">Código de confirmação</h2>
+          <div class="code-box" id="linkCodeBox">Aguardando criação de código</div>
+          <div class="quick-list" style="margin-top:16px">
+            <div class="quick-item"><div><strong>1. Solicitar vínculo</strong><div class="muted">O painel gera um código único do pedido.</div></div></div>
+            <div class="quick-item"><div><strong>2. Confirmar dentro do jogo</strong><div class="muted">Fluxo futuro: exibir aviso no MTA e validar o ID.</div></div></div>
+            <div class="quick-item"><div><strong>3. Liberar checkout</strong><div class="muted">Depois da confirmação, a conta fica apta para comprar.</div></div></div>
+          </div>
+          <div class="notice" style="margin-top:16px" id="linkInstruction">Digite seu ID acima para preparar a vinculação da conta.</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="dash-panel" id="inventario" data-panel>
+      <div class="section-head reveal compact-head"><div><span class="chip">Inventário</span><h2>Caixas e skins do jogador</h2><p>As caixas ficam dentro do inventário. Ao clicar em abrir, uma janela aparece por cima do dashboard para fazer a roleta sem redirecionar o player.</p></div></div>
+      <div class="inventory-card reveal" style="margin-bottom:14px">
+        <div class="inventory-top"><div><span class="chip">Caixas no inventário</span><h2 style="margin:12px 0 0">Estoque de caixas</h2></div><div class="helper"><span>Resumo</span><strong id="inventoryBoxSummary">0 caixas no inventário</strong></div></div>
+        <div class="box-stock-list inventory-box-list" id="inventoryBoxList"></div>
+      </div>
+      <div class="search-row reveal">
+        <input class="input" id="inventorySearch" placeholder="Buscar por nome da skin ou arma">
+        <select id="inventoryRarity">
+          <option value="all">Todas as raridades</option>
+          <option value="rare">Rara</option>
+          <option value="epic">Épica</option>
+          <option value="legendary">Lendária</option>
+          <option value="mythic">Mythica</option>
+        </select>
+      </div>
+      <div class="stats-grid reveal" style="margin-top:14px">
+        <div class="stat-card"><strong id="countRare">0</strong><span>Raras</span></div>
+        <div class="stat-card"><strong id="countEpic">0</strong><span>Épicas</span></div>
+        <div class="stat-card"><strong id="countLegendary">0</strong><span>Lendárias</span></div>
+        <div class="stat-card"><strong id="countMythic">0</strong><span>Mythicas</span></div>
+      </div>
+      <div class="inventory-card reveal" style="margin-top:14px">
+        <div class="inventory-top"><div><span class="chip">Lista de skins</span><h2 style="margin:12px 0 0">Inventário completo</h2></div><button class="btn-soft" type="button" data-open-panel="inventario">Abrir novas caixas</button></div>
+        <div class="inventory-grid" id="inventoryGrid"></div>
+      </div>
+    </section>
+
+    <section class="dash-panel" id="atividade" data-panel>
+      <div class="table-card reveal">
+        <div class="section-head compact-head"><div><span class="chip">Atividade recente</span><h2>Últimas movimentações</h2><p>Histórico visual do modelo para o usuário acompanhar compra, abertura de caixas, login e status do vínculo da conta.</p></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ação</th><th>Data</th><th>Status</th></tr></thead>
+            <tbody id="historyRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+</main>
+<footer class="footer container">
+  <div><strong>Argos RJ</strong><span>Modelo completo em HTML, CSS e JS com loja, vínculo de ID, dashboard e inventário centralizado.</span></div>
+  <div>© <span id="year"></span> Argos RJ</div>
+</footer>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

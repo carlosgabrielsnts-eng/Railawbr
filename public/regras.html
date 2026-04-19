@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <title>Regras • Argos RJ</title>
+</head>
+<body>
+<div class="page">
+<header class="site-header container">
+  <div class="header-box">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Argos RJ">
+      <div><strong>Argos RJ</strong><span>Loja e dashboard player</span></div>
+    </a>
+    <nav class="nav" id="siteNav">
+      <a href="index.html">Início</a>
+      <a href="loja.html">Loja</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="suporte.html">Suporte</a>
+      <a href="faq.html">FAQ</a>
+      <a href="regras.html">Regras</a>
+    </nav>
+    <div class="header-actions" id="authArea">
+      <button class="btn-soft mobile-toggle" id="mobileToggle">Menu</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+<section class="page-hero reveal">
+  <div class="page-title">
+    <div>
+      <span class="chip">Regras</span>
+      <h1>Diretrizes do sistema</h1>
+      <p>Resumo das regras operacionais para conta, compras, vínculo e suporte dentro do ecossistema Argos RJ.</p>
+    </div>
+  </div>
+</section>
+<section class="section rules-grid">
+  <article class="panel reveal"><span class="chip">Conta</span><h3 style="margin:12px 0 8px">Login e identidade</h3><p>Use sua conta Discord correta para acessar a loja e a dashboard. Dados divergentes podem impedir futuras entregas reais.</p></article>
+  <article class="panel reveal"><span class="chip">Vinculação</span><h3 style="margin:12px 0 8px">ID do jogo obrigatório</h3><p>O ID informado no dashboard deve ser o mesmo usado no servidor. Compras só devem ser liberadas após confirmação do vínculo.</p></article>
+  <article class="panel reveal"><span class="chip">Compras</span><h3 style="margin:12px 0 8px">Confirmação antes do checkout</h3><p>Sem login e sem ID confirmado, o sistema bloqueia a conclusão do pedido para reduzir erros de entrega.</p></article>
+  <article class="panel reveal"><span class="chip">Suporte</span><h3 style="margin:12px 0 8px">Pendências e atendimento</h3><p>Em caso de problema com login, vínculo, caixas ou inventário, use a página de suporte e o Discord oficial.</p></article>
+</section>
+</main>
+<footer class="footer container">
+  <div><strong>Argos RJ</strong><span>Regras gerais da conta, da loja e do vínculo do jogador.</span></div>
+  <div>© <span id="year"></span> Argos RJ</div>
+</footer>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
