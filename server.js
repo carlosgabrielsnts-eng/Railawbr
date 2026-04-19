@@ -1,222 +1,445 @@
+
 require('dotenv').config();
 const express = require('express');
-const path = require('path');
+const cors = require('cors');
 const fs = require('fs');
-const crypto = require('crypto');
-const cookieParser = require('cookie-parser');
+const path = require('path');
+const QRCode = require('qrcode');
 
 const app = express();
-app.set('trust proxy', 1);
+app.use(express.json({ limit: '2mb' }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(v => v.trim()) : '*'
+}));
 
-const PORT = Number(process.env.PORT || 3000);
-const PUBLIC_DIR = path.join(__dirname, 'public');
-const DATA_DIR = path.join(__dirname, 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+const PORT = process.env.PORT || 3000;
+const LOG_LIMIT = 300;
+const state = {
+  logs: [],
+  frontendPing: null,
+  firebaseConnected: false,
+  firebaseError: null,
+  serviceAccountLoaded: false,
+  lastWorkerRunAt: null
+};
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify({ links: {}, orders: [] }, null, 2));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(express.static(PUBLIC_DIR));
-
-const readDb = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-const writeDb = (db) => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-
-async function fetchCompat(...args) {
-  if (typeof fetch === 'function') return fetch(...args);
-  const mod = await import('node-fetch');
-  return mod.default(...args);
+function addLog(message, type='info'){
+  const entry = { message, type, time: new Date().toISOString() };
+  state.logs.unshift(entry);
+  state.logs = state.logs.slice(0, LOG_LIMIT);
+  console.log(`[${type}] ${message}`);
 }
 
-function inferBaseUrl(req) {
-  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
-  return `${proto}://${req.get('host')}`.replace(/\/$/, '');
+let admin = null;
+let db = null;
+try{
+  const servicePath = path.join(__dirname, 'serviceAccount.json');
+  if (fs.existsSync(servicePath)) {
+    state.serviceAccountLoaded = true;
+    admin = require('firebase-admin');
+    const serviceAccount = require(servicePath);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL || process.env.FIREBASE_DB || serviceAccount.databaseURL
+    });
+    db = admin.database();
+    state.firebaseConnected = true;
+    addLog('Firebase Admin conectado com sucesso.');
+  } else {
+    state.firebaseError = 'serviceAccount.json não encontrado';
+    addLog('Firebase Admin não carregado: serviceAccount.json não encontrado.', 'warn');
+  }
+}catch(err){
+  state.firebaseError = err.message;
+  addLog(`Erro ao conectar Firebase Admin: ${err.message}`, 'error');
 }
 
-function getBaseUrl(req) {
-  const raw = String(process.env.APP_BASE_URL || '').trim();
-  return raw ? raw.replace(/\/$/, '') : inferBaseUrl(req);
+function buildPixPayload(order){
+  const amount = Number(order?.totals?.total || order?.total || 0).toFixed(2);
+  const orderId = order?.orderId || order?.id || 'SEM-ID';
+  const gameId = order?.gameId || 'SEM-GAME-ID';
+  const payer = order?.email || order?.user?.name || 'cliente';
+  // payload textual interno/simulado para QR local via backend
+  return [
+    'ARGOSRJ',
+    `ORDER:${orderId}`,
+    `TOTAL:${amount}`,
+    `GAME:${gameId}`,
+    `PAYER:${payer}`,
+    `CREATED:${new Date().toISOString()}`
+  ].join('|');
 }
 
-function getRedirectUri(req) {
-  const raw = String(process.env.DISCORD_REDIRECT_URI || '').trim();
-  return raw ? raw.replace(/\/$/, '') : `${getBaseUrl(req)}/auth/discord/callback`;
+async function generatePaymentForOrder(userId, order){
+  const orderId = order.orderId || order.id;
+  const pixCode = buildPixPayload(order);
+  const qrImage = await QRCode.toDataURL(pixCode, {
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    width: 320
+  });
+  const payment = {
+    method: order.method || 'pix',
+    status: 'waiting_payment',
+    provider: 'firebase-backend',
+    pixCode,
+    qrImage,
+    qrText: 'Escaneie o QR Code ou copie o código PIX abaixo para concluir o pagamento.',
+    generatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    approvedAt: '',
+    deliveredAt: ''
+  };
+  await db.ref(`siteOrders/${userId}/${orderId}/payment`).set(payment);
+  await db.ref(`siteOrders/${userId}/${orderId}/status`).set('waiting_payment');
+  await db.ref(`siteOrders/${userId}/${orderId}/updatedAt`).set(new Date().toISOString());
+  addLog(`Pagamento gerado para o pedido ${orderId} do usuário ${userId}.`);
 }
 
-function secureCookies(req) {
-  const base = String(process.env.APP_BASE_URL || '').trim();
-  if (base.startsWith('http://')) return false;
-  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || '').split(',')[0].trim();
-  return proto === 'https';
+async function deliverOrder(userId, orderId){
+  const orderSnap = await db.ref(`siteOrders/${userId}/${orderId}`).get();
+  if(!orderSnap.exists()) throw new Error('Pedido não encontrado.');
+  const order = orderSnap.val();
+  if(order.delivered) return;
+  const items = Array.isArray(order.items) ? order.items : [];
+  const userRef = db.ref(`siteUsers/${userId}`);
+  const userSnap = await userRef.get();
+  const userData = userSnap.exists() ? userSnap.val() : {};
+  const inventory = Array.isArray(userData.inventory) ? userData.inventory : [];
+  const currentBoxes = Number(userData.boxes?.owned || 0);
+  const currentBalance = Number(userData.checkout?.balance || 0);
+
+  let addBoxes = 0;
+  let addBalance = 0;
+  items.forEach(item => {
+    const type = String(item.type || '').toLowerCase();
+    const name = String(item.name || '').toLowerCase();
+    if(type === 'caixa' || name.includes('caixa')) addBoxes += 1;
+    if(type === 'coins') {
+      const match = name.match(/(\d+)/);
+      addBalance += match ? Number(match[1]) : 0;
+    }
+  });
+
+  await userRef.update({
+    boxes: { owned: currentBoxes + addBoxes },
+    checkout: {
+      ...(userData.checkout || {}),
+      balance: currentBalance + addBalance
+    },
+    updatedAt: new Date().toISOString()
+  });
+
+  await db.ref(`siteOrders/${userId}/${orderId}/delivered`).set(true);
+  await db.ref(`siteOrders/${userId}/${orderId}/payment/deliveredAt`).set(new Date().toISOString());
+  addLog(`Entrega aplicada no usuário ${userId} para o pedido ${orderId}. Boxes +${addBoxes}, Coins +${addBalance}.`, 'info');
 }
 
-function html(title, message, detail = '') {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>
-  body{margin:0;font-family:Inter,Arial,sans-serif;background:#0c1019;color:#eef2ff;display:grid;place-items:center;min-height:100vh;padding:24px}
-  .box{width:min(760px,100%);background:#151b28;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-  h1{margin:0 0 12px;font-size:28px}.muted{color:#b9c1d9;line-height:1.6}.code{margin-top:16px;padding:14px;border-radius:14px;background:#0c111a;border:1px solid rgba(255,255,255,.08);white-space:pre-wrap;word-break:break-word;color:#ffd5aa}
-  a.btn{display:inline-block;margin-top:18px;padding:12px 16px;border-radius:12px;background:#ff8c2f;color:#121212;text-decoration:none;font-weight:800}
-  </style></head><body><div class="box"><h1>${title}</h1><div class="muted">${message}</div>${detail ? `<div class="code">${detail}</div>` : ''}<a class="btn" href="/login.html">Voltar ao login</a></div></body></html>`;
+async function workerCycle(){
+  if(!db) return;
+  state.lastWorkerRunAt = new Date().toISOString();
+
+  const ordersSnap = await db.ref('siteOrders').get();
+  const orders = ordersSnap.val() || {};
+  for (const [userId, userOrders] of Object.entries(orders)) {
+    for (const [orderId, order] of Object.entries(userOrders || {})) {
+      const payment = order.payment || {};
+      if ((order.status === 'queued' || payment.status === 'queued') && !payment.qrImage) {
+        try {
+          await generatePaymentForOrder(userId, order);
+        } catch(err){
+          addLog(`Falha ao gerar pagamento do pedido ${orderId}: ${err.message}`, 'error');
+        }
+      }
+      if (order.status === 'approved' && !order.delivered) {
+        try {
+          await deliverOrder(userId, orderId);
+        } catch(err){
+          addLog(`Falha ao entregar pedido ${orderId}: ${err.message}`, 'error');
+        }
+      }
+    }
+  }
+
+  // confirmar vínculos feitos no backend/jogo
+  const linkSnap = await db.ref('linkRequests').get();
+  const linkRequests = linkSnap.val() || {};
+  for (const [discordId, reqData] of Object.entries(linkRequests)) {
+    if (reqData.status === 'confirmed') {
+      await db.ref(`siteUsers/${discordId}/gameLink`).update({
+        gameId: reqData.gameId || '',
+        code: reqData.code || '',
+        status: 'confirmed',
+        confirmed: true,
+        requestedAt: reqData.createdAt || '',
+        confirmedAt: reqData.confirmedAt || new Date().toISOString()
+      });
+    }
+  }
 }
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  let databaseReadable = false;
+  let databaseMessage = state.firebaseError || null;
+  if (db){
+    try{
+      await db.ref('/').child('siteUsers').limitToFirst(1).get();
+      databaseReadable = true;
+      databaseMessage = 'ok';
+    }catch(err){
+      databaseMessage = err.message;
+    }
+  }
   res.json({
     ok: true,
-    host: req.get('host'),
-    baseUrl: getBaseUrl(req),
-    redirectUri: getRedirectUri(req),
-    hasClientId: !!String(process.env.DISCORD_CLIENT_ID || '').trim(),
-    hasClientSecret: !!String(process.env.DISCORD_CLIENT_SECRET || '').trim(),
-    secureCookies: secureCookies(req)
+    backend: true,
+    firebaseConnected: state.firebaseConnected,
+    databaseReadable,
+    databaseMessage,
+    serviceAccountLoaded: state.serviceAccountLoaded,
+    frontendPing: state.frontendPing,
+    lastWorkerRunAt: state.lastWorkerRunAt
   });
 });
 
-app.get('/auth/discord/login', (req, res) => {
-  const clientId = String(process.env.DISCORD_CLIENT_ID || '').trim();
-  if (!clientId) {
-    return res.status(500).send(html('Discord não configurado', 'Falta DISCORD_CLIENT_ID no ambiente.'));
+app.post('/api/front-ping', (req, res) => {
+  state.frontendPing = {
+    origin: req.body.origin || null,
+    page: req.body.page || null,
+    userId: req.body.userId || null,
+    time: req.body.time || Date.now()
+  };
+  addLog(`Ping do frontend recebido de ${state.frontendPing.origin || 'origem desconhecida'}.`);
+  res.json({ ok:true });
+});
+
+app.get('/api/logs', (req, res) => res.json({ ok:true, logs: state.logs }));
+
+app.get('/api/summary', async (req, res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const [users, orders, links] = await Promise.all([
+      db.ref('siteUsers').get(),
+      db.ref('siteOrders').get(),
+      db.ref('linkRequests').get()
+    ]);
+    const usersVal = users.val() || {};
+    const ordersVal = orders.val() || {};
+    const linksVal = links.val() || {};
+    const totalUsers = Object.keys(usersVal).length;
+    const totalLinks = Object.keys(linksVal).length;
+    let totalOrders = 0;
+    let waitingPayment = 0;
+    let approved = 0;
+    Object.values(ordersVal).forEach(playerOrders => Object.values(playerOrders || {}).forEach(order => {
+      totalOrders += 1;
+      if(order.status === 'waiting_payment') waitingPayment += 1;
+      if(order.status === 'approved') approved += 1;
+    }));
+    res.json({ ok:true, totalUsers, totalOrders, totalLinks, waitingPayment, approved });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
   }
-
-  const state = crypto.randomBytes(16).toString('hex');
-  const next = String(req.query.next || '/dashboard.html');
-  res.cookie('argos_oauth_state', state, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: secureCookies(req),
-    maxAge: 10 * 60 * 1000
-  });
-  res.cookie('argos_oauth_next', next, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: secureCookies(req),
-    maxAge: 10 * 60 * 1000
-  });
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: 'code',
-    redirect_uri: getRedirectUri(req),
-    scope: 'identify email',
-    state,
-    prompt: 'consent'
-  });
-
-  return res.redirect(`https://discord.com/oauth2/authorize?${params.toString()}`);
 });
 
-app.get('/auth/discord/callback.html', (req, res) => {
-  const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-  return res.redirect(`/auth/discord/callback${qs}`);
+app.get('/api/users', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const snap = await db.ref('siteUsers').get();
+    const val = snap.val() || {};
+    const items = Object.entries(val).map(([id, data]) => ({
+      discordId: id,
+      name: data.profile?.name || '-',
+      username: data.profile?.discordUser || '-',
+      gameId: data.gameLink?.gameId || '-',
+      linkStatus: data.gameLink?.status || 'pending',
+      skins: Array.isArray(data.inventory) ? data.inventory.length : Object.keys(data.inventory || {}).length,
+      boxes: Number(data.boxes?.owned || 0)
+    }));
+    res.json({ ok:true, items });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
 });
 
-app.get('/auth/discord/callback', async (req, res) => {
-  try {
-    const { code, state, error, error_description } = req.query;
-    if (error) {
-      return res.status(400).send(html('Falha ao concluir login', `${error}${error_description ? ` - ${error_description}` : ''}`));
-    }
-    if (!code) {
-      return res.status(400).send(html('Falha ao concluir login', 'O Discord não retornou o parâmetro code.'));
-    }
-
-    const cookieState = req.cookies.argos_oauth_state;
-    if (!cookieState || cookieState !== state) {
-      return res.status(400).send(html('Falha ao concluir login', 'State inválido ou expirado.'));
-    }
-
-    const body = new URLSearchParams({
-      client_id: String(process.env.DISCORD_CLIENT_ID || '').trim(),
-      client_secret: String(process.env.DISCORD_CLIENT_SECRET || '').trim(),
-      grant_type: 'authorization_code',
-      code: String(code),
-      redirect_uri: getRedirectUri(req)
+app.get('/api/orders', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const snap = await db.ref('siteOrders').get();
+    const val = snap.val() || {};
+    const items = [];
+    Object.entries(val).forEach(([userId, orders]) => {
+      Object.values(orders || {}).forEach(order => items.push({ userId, ...order }));
     });
+    items.sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    res.json({ ok:true, items });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
+});
 
-    const tokenResp = await fetchCompat('https://discord.com/api/v10/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'ArgosRJ/1.0'
-      },
-      body
+app.post('/api/orders/:userId/:orderId/approve', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const { userId, orderId } = req.params;
+    await db.ref(`siteOrders/${userId}/${orderId}`).update({
+      status: 'approved',
+      updatedAt: new Date().toISOString()
     });
+    await db.ref(`siteOrders/${userId}/${orderId}/payment`).update({
+      status: 'approved',
+      approvedAt: new Date().toISOString()
+    });
+    addLog(`Pedido ${orderId} aprovado manualmente pelo painel.`);
+    res.json({ ok:true });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
+});
 
-    const tokenText = await tokenResp.text();
-    let tokenJson;
-    try { tokenJson = JSON.parse(tokenText); } catch {}
+app.post('/api/orders/:userId/:orderId/reject', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const { userId, orderId } = req.params;
+    await db.ref(`siteOrders/${userId}/${orderId}`).update({
+      status: 'rejected',
+      updatedAt: new Date().toISOString()
+    });
+    await db.ref(`siteOrders/${userId}/${orderId}/payment`).update({
+      status: 'rejected'
+    });
+    addLog(`Pedido ${orderId} rejeitado manualmente pelo painel.`, 'warn');
+    res.json({ ok:true });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
+});
 
-    if (!tokenResp.ok) {
-      return res.status(tokenResp.status).send(
-        html(
-          'Falha ao concluir login',
-          'O Discord rejeitou a troca do código por token.',
-          tokenJson ? JSON.stringify(tokenJson, null, 2) : tokenText.slice(0, 500)
-        )
-      );
-    }
+app.post('/api/links/:discordId/confirm', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const { discordId } = req.params;
+    const snap = await db.ref(`linkRequests/${discordId}`).get();
+    if(!snap.exists()) return res.status(404).json({ ok:false, message:'Pedido de vínculo não encontrado.' });
+    const val = snap.val();
+    await db.ref(`linkRequests/${discordId}`).update({
+      status: 'confirmed',
+      confirmedAt: new Date().toISOString()
+    });
+    await db.ref(`siteUsers/${discordId}/gameLink`).update({
+      gameId: val.gameId || '',
+      code: val.code || '',
+      status: 'confirmed',
+      confirmed: true,
+      requestedAt: val.createdAt || '',
+      confirmedAt: new Date().toISOString()
+    });
+    addLog(`Vínculo do usuário ${discordId} confirmado pelo painel.`);
+    res.json({ ok:true });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
+});
 
-    const meResp = await fetchCompat('https://discord.com/api/v10/users/@me', {
-      headers: {
-        'Authorization': `Bearer ${tokenJson.access_token}`,
-        'Accept': 'application/json',
-        'User-Agent': 'ArgosRJ/1.0'
+app.get('/api/link-requests', async (req,res) => {
+  try{
+    if (!db) return res.status(500).json({ ok:false, message:'Firebase Admin não configurado.' });
+    const snap = await db.ref('linkRequests').get();
+    const val = snap.val() || {};
+    const items = Object.entries(val).map(([discordId, item]) => ({ discordId, ...item }));
+    items.sort((a,b)=> String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    res.json({ ok:true, items });
+  }catch(err){
+    res.status(500).json({ ok:false, message: err.message });
+  }
+});
+
+app.get('/admin', (req,res) => {
+  res.send(`<!doctype html>
+  <html lang="pt-BR">
+  <head>
+    <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Argos RJ • Backend Admin</title>
+    <style>
+      :root{--bg:#0b1017;--panel:#121a25;--stroke:rgba(255,255,255,.08);--text:#ecf2ff;--muted:#9fb0ca;--gold:#d7a64a;--ok:#3ddc97;--warn:#ffb020;--danger:#ff6b6b}
+      *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#091019,#0c121c);color:var(--text);font-family:Inter,Arial,sans-serif}
+      .container{width:min(1220px,calc(100% - 32px));margin:0 auto}.hero{padding:30px 0}.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+      .card{background:rgba(255,255,255,.03);border:1px solid var(--stroke);border-radius:20px;padding:20px}
+      h1,h2,h3{margin:0 0 12px}.muted{color:var(--muted)} .k{font-size:28px;font-weight:900}
+      table{width:100%;border-collapse:separate;border-spacing:0 10px}th,td{text-align:left;padding:12px 10px}tr{background:rgba(255,255,255,.03)}
+      .pill{display:inline-block;padding:7px 10px;border-radius:999px;border:1px solid var(--stroke)}
+      pre{white-space:pre-wrap;background:#0f1722;padding:14px;border-radius:16px;border:1px solid var(--stroke);max-height:340px;overflow:auto}
+      button{padding:9px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+      .okb{background:#2f9e62;color:#fff}.warnb{background:#c48b24;color:#111}.dangerb{background:#c44a4a;color:#fff}
+      @media(max-width:980px){.g4,.g2{grid-template-columns:1fr}}
+    </style>
+  </head>
+  <body>
+    <section class="hero"><div class="container grid">
+      <div class="card">
+        <h1>Painel backend • Argos RJ</h1>
+        <div class="muted">Backend conectado ao mesmo Firebase do site. Ele lê pedidos do checkout, gera QR Code, confirma vínculos e permite aprovar pedidos pelo painel.</div>
+      </div>
+      <div class="grid g4">
+        <div class="card"><div class="muted">Backend</div><div class="k" id="kBackend">--</div></div>
+        <div class="card"><div class="muted">Firebase</div><div class="k" id="kFirebase">--</div></div>
+        <div class="card"><div class="muted">Frontend</div><div class="k" id="kFrontend">--</div></div>
+        <div class="card"><div class="muted">Usuários</div><div class="k" id="kUsers">--</div></div>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h2>Resumo</h2><div id="summaryWrap" class="muted">Carregando...</div></div>
+        <div class="card"><h2>Último ping do frontend</h2><pre id="pingBox">Carregando...</pre></div>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h2>Pedidos</h2><div style="overflow:auto"><table><thead><tr><th>Pedido</th><th>User</th><th>Status</th><th>Total</th><th>Ação</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div>
+        <div class="card"><h2>Pedidos de vínculo</h2><div style="overflow:auto"><table><thead><tr><th>Discord</th><th>ID do jogo</th><th>Status</th><th>Ação</th></tr></thead><tbody id="linksBody"></tbody></table></div></div>
+      </div>
+      <div class="card"><h2>Usuários</h2><div style="overflow:auto"><table><thead><tr><th>Nome</th><th>Discord</th><th>Game ID</th><th>Vínculo</th><th>Skins</th><th>Caixas</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+      <div class="card"><h2>Logs</h2><pre id="logsBox">Carregando...</pre></div>
+    </div></section>
+    <script>
+      async function j(u, opts){ const r = await fetch(u, opts); return r.json(); }
+      async function act(url){ await j(url, {method:'POST'}); init(); }
+      async function init(){
+        const health = await j('/api/health');
+        const summary = await j('/api/summary').catch(()=>({}));
+        const users = await j('/api/users').catch(()=>({items:[]}));
+        const orders = await j('/api/orders').catch(()=>({items:[]}));
+        const links = await j('/api/link-requests').catch(()=>({items:[]}));
+        const logs = await j('/api/logs').catch(()=>({logs:[]}));
+
+        document.getElementById('kBackend').textContent = health.backend ? 'OK' : 'OFF';
+        document.getElementById('kFirebase').textContent = health.firebaseConnected ? 'OK' : 'OFF';
+        document.getElementById('kFrontend').textContent = health.frontendPing ? 'ON' : 'OFF';
+        document.getElementById('kUsers').textContent = summary.totalUsers ?? '--';
+        document.getElementById('summaryWrap').innerHTML =
+          'Usuários: <strong>'+(summary.totalUsers ?? 0)+'</strong><br>' +
+          'Pedidos: <strong>'+(summary.totalOrders ?? 0)+'</strong><br>' +
+          'Aguardando pagamento: <strong>'+(summary.waitingPayment ?? 0)+'</strong><br>' +
+          'Aprovados: <strong>'+(summary.approved ?? 0)+'</strong><br>' +
+          'Vínculos: <strong>'+(summary.totalLinks ?? 0)+'</strong><br>' +
+          '<span class="muted">Leitura do banco: '+(health.databaseReadable ? 'ok' : (health.databaseMessage || 'sem leitura'))+'</span>';
+        document.getElementById('pingBox').textContent = JSON.stringify(health.frontendPing, null, 2);
+
+        document.getElementById('usersBody').innerHTML = (users.items || []).map(u => '<tr><td>'+u.name+'</td><td>'+u.username+'</td><td>'+u.gameId+'</td><td>'+u.linkStatus+'</td><td>'+u.skins+'</td><td>'+u.boxes+'</td></tr>').join('') || '<tr><td colspan="6">Nenhum usuário.</td></tr>';
+        document.getElementById('ordersBody').innerHTML = (orders.items || []).slice(0,30).map(o => {
+          return '<tr><td>'+o.id+'</td><td>'+o.userId+'</td><td>'+o.status+'</td><td>R$ '+Number(o.totals?.total || 0).toFixed(2)+'</td><td>' +
+            '<button class="okb" onclick="act(\\'/api/orders/'+o.userId+'/'+o.id+'/approve\\')">Aprovar</button> '+
+            '<button class="dangerb" onclick="act(\\'/api/orders/'+o.userId+'/'+o.id+'/reject\\')">Rejeitar</button></td></tr>';
+        }).join('') || '<tr><td colspan="5">Nenhum pedido.</td></tr>';
+        document.getElementById('linksBody').innerHTML = (links.items || []).slice(0,30).map(l => '<tr><td>'+l.discordUser+'</td><td>'+l.gameId+'</td><td>'+l.status+'</td><td><button class="warnb" onclick="act(\\'/api/links/'+l.discordId+'/confirm\\')">Confirmar</button></td></tr>').join('') || '<tr><td colspan="4">Nenhum vínculo.</td></tr>';
+        document.getElementById('logsBox').textContent = (logs.logs || []).map(l => '['+l.time+'] '+l.message).join('\\n') || 'Sem logs.';
       }
-    });
-
-    const meText = await meResp.text();
-    let meJson;
-    try { meJson = JSON.parse(meText); } catch {}
-
-    if (!meResp.ok || !meJson) {
-      return res.status(meResp.status || 500).send(
-        html(
-          'Falha ao buscar usuário',
-          'Não foi possível obter os dados do usuário no Discord.',
-          meJson ? JSON.stringify(meJson, null, 2) : meText.slice(0, 500)
-        )
-      );
-    }
-
-    const db = readDb();
-    db.lastLogin = {
-      id: meJson.id,
-      username: meJson.username,
-      global_name: meJson.global_name || '',
-      avatar: meJson.avatar || '',
-      email: meJson.email || ''
-    };
-    writeDb(db);
-
-    const next = req.cookies.argos_oauth_next || '/dashboard.html';
-    const payload = {
-      name: meJson.global_name || meJson.username || 'Player Argos',
-      discordUser: meJson.username || 'discord',
-      discordTag: meJson.discriminator && meJson.discriminator !== '0' ? `${meJson.username}#${meJson.discriminator}` : meJson.username,
-      role: 'Player Argos',
-      joined: '2026',
-      avatar: meJson.avatar ? `https://cdn.discordapp.com/avatars/${meJson.id}/${meJson.avatar}.png?size=256` : ''
-    };
-
-    const safeJson = JSON.stringify(payload).replace(/</g, '\\u003c');
-
-    res.clearCookie('argos_oauth_state');
-    res.clearCookie('argos_oauth_next');
-    return res.send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Login concluído</title></head><body><script>
-      localStorage.setItem('argos_user', JSON.stringify(${safeJson}));
-      window.location.replace(${JSON.stringify(next)});
-    </script></body></html>`);
-  } catch (err) {
-    return res.status(500).send(html('Falha ao concluir login', err.message || 'Erro interno no callback.'));
-  }
+      init();
+      setInterval(init, 12000);
+    </script>
+  </body></html>`);
 });
 
-app.get('/api/server/status', async (req, res) => {
-  return res.json({ online: true, players: 0, maxPlayers: 1024, message: 'Configure STATUS_API_URL para status real.' });
-});
+setInterval(() => {
+  workerCycle().catch(err => addLog(`Erro no worker: ${err.message}`, 'error'));
+}, Number(process.env.WORKER_INTERVAL_MS || 12000));
 
-app.listen(PORT, () => {
-  console.log(`Argos RJ online em http://localhost:${PORT}`);
-});
+workerCycle().catch(err => addLog(`Erro no worker inicial: ${err.message}`, 'error'));
+
+app.listen(PORT, () => addLog(`Backend iniciado na porta ${PORT}.`));
